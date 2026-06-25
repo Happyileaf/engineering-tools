@@ -1,0 +1,36 @@
+{
+  "name": "@engineering-tools/create-app",
+  "version": "0.0.0",
+  "description": "快速创建前端项目的 CLI 工具",
+  "type": "module",
+  "bin": {
+    "create-app": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsdown --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/prompts": "^2.4.9",
+    "tsdown": "^0.22.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "kolorist": "^1.8.0",
+    "prompts": "^2.4.2"
+  }
+}

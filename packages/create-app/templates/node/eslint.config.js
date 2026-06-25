@@ -11,13 +11,7 @@ import globals from 'globals';
 export default defineConfig(
   // 全局忽略
   {
-    ignores: [
-      'dist',
-      'node_modules',
-      'coverage',
-      '*.config.{js,ts}',
-      'packages/create-app/templates/**',
-    ],
+    ignores: ['dist', 'node_modules', 'coverage', '*.config.{js,ts}'],
   },
 
   // 基础规则

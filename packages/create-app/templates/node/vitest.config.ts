@@ -16,15 +16,8 @@ export default defineConfig({
     projects: [
       {
         test: {
-          name: 'example-tool',
-          root: './packages/example-tool',
-        },
-      },
-      {
-        test: {
-          name: 'create-app',
-          root: './packages/create-app',
-          exclude: ['**/templates/**'],
+          name: 'example',
+          root: './packages/example',
         },
       },
     ],

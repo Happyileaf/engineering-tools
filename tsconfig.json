@@ -3,6 +3,9 @@
   "references": [
     {
       "path": "packages/example-tool"
+    },
+    {
+      "path": "packages/create-app"
     }
   ]
 }
