@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectJsReferences } from '../js-collector';
+import { collectJsReferences, collectJsFiles } from '../js-collector';
 
 /** JS 引用收集器测试 */
 describe('collectJsReferences', () => {
@@ -217,5 +217,89 @@ describe('collectJsReferences', () => {
     });
 
     expect(cssModulesRefs.has('userInfo')).toBe(true);
+  });
+});
+
+/** collectJsFiles 批量收集测试 */
+describe('collectJsFiles', () => {
+  it('批量收集多个文件并合并结果', () => {
+    const readFile = (filePath: string) => {
+      const files: Record<string, string> = {
+        '/test/a.tsx': `
+          import styles from './a.module.css'
+          export function A() { return <div className={styles.userInfo} /> }
+        `,
+        '/test/b.tsx': `
+          import styles from './b.module.css'
+          export function B() { return <div className={styles.userCard} /> }
+        `,
+      };
+      return files[filePath] ?? '';
+    };
+
+    const { cssModulesRefs, classNameRefs, skips } = collectJsFiles(
+      ['/test/a.tsx', '/test/b.tsx'],
+      readFile,
+    );
+
+    expect(cssModulesRefs.has('userInfo')).toBe(true);
+    expect(cssModulesRefs.has('userCard')).toBe(true);
+    expect(cssModulesRefs.get('userInfo')?.[0].file).toBe('/test/a.tsx');
+    expect(cssModulesRefs.get('userCard')?.[0].file).toBe('/test/b.tsx');
+    expect(skips.length).toBe(0);
+  });
+
+  it('同一类名跨文件多次引用', () => {
+    const readFile = (filePath: string) => {
+      const files: Record<string, string> = {
+        '/test/a.tsx': `
+          import styles from './a.module.css'
+          export function A() { return <div className={styles.sharedClass} /> }
+        `,
+        '/test/b.tsx': `
+          import styles from './b.module.css'
+          export function B() { return <div className={styles.sharedClass} /> }
+        `,
+      };
+      return files[filePath] ?? '';
+    };
+
+    const { cssModulesRefs } = collectJsFiles(['/test/a.tsx', '/test/b.tsx'], readFile);
+
+    expect(cssModulesRefs.get('sharedClass')?.length).toBe(2);
+  });
+});
+
+/** JS 引用收集器 - 左值赋值不处理 */
+describe('collectJsReferences (左值赋值)', () => {
+  it('不收集 styles.foo = xxx 赋值左值', () => {
+    const content = `
+      import styles from './foo.module.css'
+      styles.userInfo = 'override'
+    `;
+    const { cssModulesRefs, skips } = collectJsReferences({
+      filePath: '/test/foo.tsx',
+      content,
+    });
+
+    // 左值赋值不应被收集为引用
+    expect(cssModulesRefs.has('userInfo')).toBe(false);
+    // 也不应该标黄为 dynamic-access（因为能识别是左值）
+    expect(skips.some((s) => s.reason === 'dynamic-access')).toBe(false);
+  });
+
+  it('收集 styles["foo"] = xxx 赋值左值', () => {
+    const content = `
+      import styles from './foo.module.css'
+      styles['userInfo'] = 'override'
+    `;
+    const { cssModulesRefs, skips } = collectJsReferences({
+      filePath: '/test/foo.tsx',
+      content,
+    });
+
+    // 左值赋值不应被收集为引用
+    expect(cssModulesRefs.has('userInfo')).toBe(false);
+    expect(skips.some((s) => s.reason === 'dynamic-access')).toBe(false);
   });
 });

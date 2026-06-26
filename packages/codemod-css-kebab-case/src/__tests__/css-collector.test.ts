@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectCssClasses } from '../css-collector';
+import { collectCssClasses, collectCssFiles } from '../css-collector';
 
 /** CSS 类名定义收集器测试 */
 describe('collectCssClasses', () => {
@@ -122,5 +122,43 @@ describe('collectCssClasses', () => {
 
     expect(skips.length).toBeGreaterThan(0);
     expect(defs.size).toBe(0);
+  });
+});
+
+/** collectCssFiles 批量收集测试 */
+describe('collectCssFiles', () => {
+  it('批量收集多个文件并合并结果', () => {
+    const readFile = (filePath: string) => {
+      const files: Record<string, string> = {
+        '/test/a.css': '.userInfo { color: red; }',
+        '/test/b.css': '.userCard { width: 32px; }',
+      };
+      return files[filePath] ?? '';
+    };
+
+    const { defs, skips } = collectCssFiles(
+      ['/test/a.css', '/test/b.css'],
+      readFile,
+    );
+
+    expect(defs.has('userInfo')).toBe(true);
+    expect(defs.has('userCard')).toBe(true);
+    expect(defs.get('userInfo')?.[0].file).toBe('/test/a.css');
+    expect(defs.get('userCard')?.[0].file).toBe('/test/b.css');
+    expect(skips.length).toBe(0);
+  });
+
+  it('同一类名跨文件多次定义', () => {
+    const readFile = (filePath: string) => {
+      const files: Record<string, string> = {
+        '/test/a.css': '.sharedClass { color: red; }',
+        '/test/b.css': '.sharedClass { width: 32px; }',
+      };
+      return files[filePath] ?? '';
+    };
+
+    const { defs } = collectCssFiles(['/test/a.css', '/test/b.css'], readFile);
+
+    expect(defs.get('sharedClass')?.length).toBe(2);
   });
 });
