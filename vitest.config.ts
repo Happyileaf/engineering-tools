@@ -27,6 +27,12 @@ export default defineConfig({
           exclude: ['**/templates/**'],
         },
       },
+      {
+        test: {
+          name: 'codemod-css-kebab-case',
+          root: './packages/codemod-css-kebab-case',
+        },
+      },
     ],
   },
 });

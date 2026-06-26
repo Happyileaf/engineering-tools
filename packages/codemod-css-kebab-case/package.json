@@ -1,0 +1,48 @@
+{
+  "name": "codemod-css-kebab-case",
+  "version": "0.0.0",
+  "description": "将 CSS 类名从非 kebab-case（camelCase/snake_case/PascalCase 等）转换为 kebab-case 的 codemod 工具",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "bin": {
+    "codemod-css-kebab-case": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.mts",
+      "import": "./dist/cli.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsdown --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.24.0",
+    "@babel/parser": "^7.24.0",
+    "@babel/traverse": "^7.24.0",
+    "@babel/types": "^7.24.0",
+    "postcss": "^8.4.0",
+    "postcss-selector-parser": "^6.0.0",
+    "prettier": "^3.0.0",
+    "tinyglobby": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/babel__generator": "^7.27.0",
+    "@types/babel__traverse": "^7.20.0",
+    "@types/node": "^20.0.0",
+    "tsdown": "^0.22.0",
+    "typescript": "^5.4.0"
+  }
+}
