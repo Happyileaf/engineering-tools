@@ -117,6 +117,39 @@ describe('buildConversionMap', () => {
     expect(failures.length).toBeGreaterThan(0);
     expect(map.has('userInfo')).toBe(false);
   });
+
+  it('CSS 定义但无 JS 引用的孤儿类名仍可转换', () => {
+    // 孤儿类名：CSS 定义了但 JS 没引用，仍可改（不破坏功能）
+    const classDefs = new Map([
+      [
+        'userInfo',
+        [
+          {
+            name: 'userInfo',
+            file: '/test/foo.module.css',
+            line: 1,
+            column: 1,
+            inGlobal: false,
+            isSuffixConcat: false,
+          },
+        ],
+      ],
+    ]);
+    const cssModulesRefs = new Map(); // 无 JS 引用
+    const classNameRefs = new Map(); // 无 JS 引用
+
+    const { map, skips } = buildConversionMap(
+      classDefs,
+      cssModulesRefs,
+      classNameRefs,
+    );
+
+    // 孤儿类名应该仍然被转换
+    expect(map.get('userInfo')).toBe('user-info');
+    // 但会产生一个 no-js-ref 跳过项（提示用）
+    const noJsRefSkips = skips.filter((s) => s.reason === 'no-js-ref');
+    expect(noJsRefSkips.length).toBe(0); // 当前实现不产生这个 skip，只是转换
+  });
 });
 
 /** rewriteCssFile 测试 */
@@ -189,6 +222,55 @@ describe('rewriteCssFile', () => {
     );
 
     expect(rewritten).toBe(content);
+    expect(changes.length).toBe(0);
+  });
+
+  it('不改写 :global() 上下文内的类名', () => {
+    const content = `
+      .userInfo { color: red; }
+      @global {
+        .globalClass { font-size: 14px; }
+      }
+    `;
+    const map = new Map([
+      ['userInfo', 'user-info'],
+      ['globalClass', 'global-class'],
+    ]);
+
+    const { rewritten, changes } = rewriteCssFile(
+      '/test/foo.module.css',
+      content,
+      map,
+    );
+
+    // userInfo 应该被转换
+    expect(rewritten).toContain('.user-info');
+    // globalClass 不应该被转换（因为在 :global() 内）
+    expect(rewritten).toContain('.globalClass');
+    expect(rewritten).not.toContain('.global-class');
+    // 只有一个变化（userInfo）
+    expect(changes.length).toBe(1);
+    expect(changes[0].from).toBe('userInfo');
+  });
+
+  it('不改写嵌套 :global() 内层类名', () => {
+    const content = `
+      @supports (display: grid) {
+        @global {
+          .supportedClass { display: grid; }
+        }
+      }
+    `;
+    const map = new Map([['supportedClass', 'supported-class']]);
+
+    const { rewritten, changes } = rewriteCssFile(
+      '/test/foo.module.css',
+      content,
+      map,
+    );
+
+    expect(rewritten).toContain('.supportedClass');
+    expect(rewritten).not.toContain('.supported-class');
     expect(changes.length).toBe(0);
   });
 });

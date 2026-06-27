@@ -123,4 +123,38 @@ describe('collectCssClasses', () => {
     expect(skips.length).toBeGreaterThan(0);
     expect(defs.size).toBe(0);
   });
+
+  it('跳过 :global() 上下文内的类名', () => {
+    const content = `
+      .userInfo { color: red; }
+      @global {
+        .globalClass { font-size: 14px; }
+      }
+      .anotherClass { width: 32px; }
+    `;
+    const { defs, skips } = collectCssClasses('/test/foo.module.css', content);
+
+    expect(defs.has('userInfo')).toBe(true);
+    expect(defs.has('globalClass')).toBe(false); // 在 :global() 内，跳过
+    expect(defs.has('anotherClass')).toBe(true);
+
+    const globalSkips = skips.filter((s) => s.reason === 'global');
+    expect(globalSkips.length).toBe(1);
+    expect(globalSkips[0].snippet).toContain('globalClass');
+  });
+
+  it('嵌套 :global() 内层也跳过', () => {
+    const content = `
+      @supports (display: grid) {
+        @global {
+          .supportedClass { display: grid; }
+        }
+      }
+    `;
+    const { defs, skips } = collectCssClasses('/test/foo.module.css', content);
+
+    expect(defs.has('supportedClass')).toBe(false);
+    const globalSkips = skips.filter((s) => s.reason === 'global');
+    expect(globalSkips.length).toBe(1);
+  });
 });
