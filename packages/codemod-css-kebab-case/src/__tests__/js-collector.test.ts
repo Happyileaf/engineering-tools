@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectJsReferences } from '../js-collector';
+import { collectJsReferences, collectJsFiles } from '../js-collector';
 
 /** JS 引用收集器测试 */
 describe('collectJsReferences', () => {
@@ -217,5 +217,94 @@ describe('collectJsReferences', () => {
     });
 
     expect(cssModulesRefs.has('userInfo')).toBe(true);
+  });
+});
+
+/** collectJsFiles 批量收集测试 */
+describe('collectJsFiles', () => {
+  it('批量收集多个文件并合并结果', () => {
+    const files = ['/test/foo.tsx', '/test/bar.tsx'];
+    const readFile = (file: string) => {
+      if (file === '/test/foo.tsx') {
+        return `
+          import styles from './foo.module.css'
+          export function Foo() {
+            return <div className={styles.userInfo} />
+          }
+        `;
+      }
+      if (file === '/test/bar.tsx') {
+        return `
+          import styles from './bar.module.css'
+          export function Bar() {
+            return <div className={styles.userAvatar} />
+          }
+        `;
+      }
+      return '';
+    };
+
+    const { cssModulesRefs, classNameRefs, skips } = collectJsFiles(
+      files,
+      readFile,
+      {},
+    );
+
+    expect(cssModulesRefs.has('userInfo')).toBe(true);
+    expect(cssModulesRefs.has('userAvatar')).toBe(true);
+    expect(cssModulesRefs.get('userInfo')?.length).toBe(1);
+    expect(cssModulesRefs.get('userAvatar')?.length).toBe(1);
+    expect(skips.length).toBe(0);
+  });
+
+  it('合并同名的引用项', () => {
+    const files = ['/test/a.tsx', '/test/b.tsx'];
+    const readFile = (file: string) => {
+      if (file === '/test/a.tsx') {
+        return `export function A() { return <div className="sharedClass" /> }`;
+      }
+      if (file === '/test/b.tsx') {
+        return `export function B() { return <div className="sharedClass" /> }`;
+      }
+      return '';
+    };
+
+    const { classNameRefs } = collectJsFiles(files, readFile, {});
+
+    expect(classNameRefs.get('sharedClass')?.length).toBe(2);
+  });
+
+  it('支持自定义 classnames 函数列表', () => {
+    const files = ['/test/foo.tsx'];
+    const readFile = () => `
+      import { c } from 'lib'
+      export function Foo() {
+        return <div className={c('customFn')}>Hello</div>
+      }
+    `;
+
+    const { classNameRefs, skips } = collectJsFiles(
+      files,
+      readFile,
+      { classnamesFns: ['c'] },
+    );
+
+    expect(classNameRefs.has('customFn')).toBe(true);
+    expect(skips.some((s) => s.reason === 'non-string-arg')).toBe(false);
+  });
+
+  it('跳过不符合 modulePattern 的 import', () => {
+    const files = ['/test/foo.tsx'];
+    const readFile = () => `
+      import styles from './foo.css'
+      export function Foo() {
+        return <div className={styles.userInfo} />
+      }
+    `;
+
+    const { cssModulesRefs } = collectJsFiles(files, readFile, {});
+
+    // .css 不匹配默认的 modulePattern，所以不会被识别为 CSS Modules
+    expect(cssModulesRefs.has('userInfo')).toBe(false);
   });
 });

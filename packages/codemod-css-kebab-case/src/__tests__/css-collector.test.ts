@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectCssClasses } from '../css-collector';
+import { collectCssClasses, collectCssFiles } from '../css-collector';
 
 /** CSS 类名定义收集器测试 */
 describe('collectCssClasses', () => {
@@ -122,5 +122,77 @@ describe('collectCssClasses', () => {
 
     expect(skips.length).toBeGreaterThan(0);
     expect(defs.size).toBe(0);
+  });
+});
+
+/** collectCssFiles 批量收集测试 */
+describe('collectCssFiles', () => {
+  it('批量收集多个文件并合并结果', () => {
+    const files = ['/test/a.module.css', '/test/b.module.css'];
+    const readFile = (file: string) => {
+      if (file === '/test/a.module.css') {
+        return `.userInfo { color: red; }`;
+      }
+      if (file === '/test/b.module.css') {
+        return `.userAvatar { width: 32px; }`;
+      }
+      return '';
+    };
+
+    const { defs, skips } = collectCssFiles(files, readFile);
+
+    expect(defs.has('userInfo')).toBe(true);
+    expect(defs.has('userAvatar')).toBe(true);
+    expect(defs.get('userInfo')?.length).toBe(1);
+    expect(defs.get('userAvatar')?.length).toBe(1);
+    expect(skips.length).toBe(0);
+  });
+
+  it('合并同名的定义项', () => {
+    const files = ['/test/a.module.css', '/test/b.module.css'];
+    const readFile = (file: string) => {
+      if (file === '/test/a.module.css') {
+        return `.sharedClass { color: red; }`;
+      }
+      if (file === '/test/b.module.css') {
+        return `.sharedClass { width: 32px; }`;
+      }
+      return '';
+    };
+
+    const { defs } = collectCssFiles(files, readFile);
+
+    expect(defs.get('sharedClass')?.length).toBe(2);
+  });
+
+  it('同一文件多次出现的同名类名合并', () => {
+    const files = ['/test/a.module.css'];
+    const readFile = () => `
+      .userInfo { color: red; }
+      .userInfo { width: 32px; }
+    `;
+
+    const { defs } = collectCssFiles(files, readFile);
+
+    expect(defs.get('userInfo')?.length).toBe(2);
+  });
+
+  it('收集过程中的跳过项被正确汇总', () => {
+    const files = ['/test/a.module.css', '/test/b.module.css'];
+    const readFile = (file: string) => {
+      if (file === '/test/a.module.css') {
+        return `.userInfo { color: red; }`;
+      }
+      if (file === '/test/b.module.css') {
+        // 坏的 CSS
+        return `.broken {`;
+      }
+      return '';
+    };
+
+    const { defs, skips } = collectCssFiles(files, readFile);
+
+    expect(defs.has('userInfo')).toBe(true);
+    expect(skips.length).toBeGreaterThan(0);
   });
 });
