@@ -21,7 +21,7 @@ import {
  *
  * @returns 解析后的参数
  */
-function parseArgs(): {
+export function parseArgs(): {
   projectName?: string;
   template?: string;
   help: boolean;
@@ -72,7 +72,7 @@ function printHelp(): void {
  * @param name - 项目名
  * @returns 是否合法
  */
-function isValidProjectName(name: string): boolean {
+export function isValidProjectName(name: string): boolean {
   // npm 包名规则：小写字母、数字、连字符、下划线
   return /^[a-z0-9_-]+$/i.test(name) && name.length > 0;
 }
