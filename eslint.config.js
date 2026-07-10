@@ -12,8 +12,8 @@ export default defineConfig(
   // 全局忽略
   {
     ignores: [
-      'dist',
-      'node_modules',
+      '**/dist/**',
+      '**/node_modules/**',
       'coverage',
       '*.config.{js,ts}',
       'packages/create-app/templates/**',

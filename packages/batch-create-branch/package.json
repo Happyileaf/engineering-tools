@@ -1,0 +1,36 @@
+{
+  "name": "@engineering-tools/batch-create-branch",
+  "version": "0.0.0",
+  "description": "批量在多个本地 Git 仓库创建（并可选推送）分支的 CLI 工具，用于统一升级 CI 等跨仓库改造场景",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "bin": {
+    "batch-create-branch": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.mts",
+      "import": "./dist/cli.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsdown --watch",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsdown": "^0.22.0",
+    "typescript": "^5.4.0"
+  }
+}

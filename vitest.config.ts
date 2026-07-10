@@ -33,6 +33,12 @@ export default defineConfig({
           root: './packages/codemod-css-kebab-case',
         },
       },
+      {
+        test: {
+          name: 'batch-create-branch',
+          root: './packages/batch-create-branch',
+        },
+      },
     ],
   },
 });

@@ -51,6 +51,18 @@ importers:
         specifier: ^3.2.0
         version: 3.2.6(@types/node@26.0.1)(jiti@2.6.1)(yaml@2.9.0)
 
+  packages/batch-create-branch:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.0
+      tsdown:
+        specifier: ^0.22.0
+        version: 0.22.3(typescript@5.9.3)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   packages/codemod-css-kebab-case:
     dependencies:
       '@babel/generator':
