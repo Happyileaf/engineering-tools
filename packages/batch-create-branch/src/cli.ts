@@ -142,7 +142,7 @@ async function getVersion(): Promise<string> {
  * @returns 解析结果
  * @throws 参数错误时抛出
  */
-function parseArgs(argv: string[]): CliArgs {
+export function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     all: false,
     repoNames: [],
@@ -339,4 +339,6 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
