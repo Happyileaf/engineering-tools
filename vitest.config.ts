@@ -39,6 +39,12 @@ export default defineConfig({
           root: './packages/batch-create-branch',
         },
       },
+      {
+        test: {
+          name: 'batch-create-remote-branch',
+          root: './packages/batch-create-remote-branch',
+        },
+      },
     ],
   },
 });

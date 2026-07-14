@@ -9,6 +9,9 @@
     },
     {
       "path": "packages/batch-create-branch"
+    },
+    {
+      "path": "packages/batch-create-remote-branch"
     }
   ]
 }

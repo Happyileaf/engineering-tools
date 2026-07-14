@@ -63,6 +63,18 @@ importers:
         specifier: ^5.4.0
         version: 5.9.3
 
+  packages/batch-create-remote-branch:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.0
+      tsdown:
+        specifier: ^0.22.0
+        version: 0.22.3(typescript@5.9.3)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   packages/codemod-css-kebab-case:
     dependencies:
       '@babel/generator':
