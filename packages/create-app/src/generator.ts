@@ -29,9 +29,12 @@ export interface TemplateVars {
  */
 export function toScope(projectName: string): string {
   const kebab = projectName
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/[_\s]+/g, '-')
-    .toLowerCase();
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase()
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
   return `@${kebab}`;
 }
 
