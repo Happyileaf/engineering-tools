@@ -3,12 +3,19 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  formatResult,
+  formatResultText,
+  formatResultJson,
   loadRemoteRegistry,
   renderRemoteBranchName,
   runBatchCreateRemoteBranch,
   selectRemoteRepos,
 } from '../index';
-import type { GithubRemoteRepoTarget, GitlabRemoteRepoTarget } from '../types';
+import type {
+  GithubRemoteRepoTarget,
+  GitlabRemoteRepoTarget,
+  RemoteBatchResult,
+} from '../types';
 
 /** mock HTTP 请求记录 */
 interface MockRequest {
@@ -332,5 +339,107 @@ describe('runBatchCreateRemoteBranch', () => {
     expect(result.results[0].status).toBe('failed');
     expect(result.results[0].reason).toContain('相同');
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('formatResultText', () => {
+  it('格式化包含 dry-run 提示', () => {
+    const result: RemoteBatchResult = {
+      dryRun: true,
+      results: [
+        {
+          repo: 'web',
+          provider: 'github',
+          branch: 'feat/x',
+          base: 'main',
+          status: 'created',
+          actions: ['create remote branch feat/x from abc'],
+        },
+      ],
+    };
+    const text = formatResultText(result);
+    expect(text).toContain('dry-run');
+    expect(text).toContain('web');
+    expect(text).toContain('新建远端分支');
+    expect(text).toContain('create remote branch');
+  });
+
+  it('格式化汇总行', () => {
+    const result: RemoteBatchResult = {
+      dryRun: false,
+      results: [
+        {
+          repo: 'a',
+          provider: 'github',
+          branch: 'b',
+          status: 'created',
+          actions: [],
+        },
+        {
+          repo: 'c',
+          provider: 'gitlab',
+          branch: 'd',
+          status: 'skipped',
+          reason: 'test',
+          actions: [],
+        },
+      ],
+    };
+    const text = formatResultText(result);
+    expect(text).toContain('汇总: 成功 1 / 跳过 1 / 失败 0 / 共 2');
+  });
+});
+
+describe('formatResultJson', () => {
+  it('输出合法 JSON', () => {
+    const result: RemoteBatchResult = {
+      dryRun: false,
+      results: [
+        {
+          repo: 'web',
+          provider: 'github',
+          branch: 'feat/x',
+          status: 'created',
+          actions: [],
+        },
+      ],
+    };
+    const json = formatResultJson(result);
+    expect(() => JSON.parse(json)).not.toThrow();
+    expect(JSON.parse(json).results[0].status).toBe('created');
+  });
+});
+
+describe('formatResult', () => {
+  it('text 格式委托 formatResultText', () => {
+    const result: RemoteBatchResult = {
+      dryRun: false,
+      results: [
+        {
+          repo: 'web',
+          provider: 'github',
+          branch: 'feat/x',
+          status: 'created',
+          actions: [],
+        },
+      ],
+    };
+    expect(formatResult(result, 'text')).toBe(formatResultText(result));
+  });
+
+  it('json 格式委托 formatResultJson', () => {
+    const result: RemoteBatchResult = {
+      dryRun: false,
+      results: [
+        {
+          repo: 'web',
+          provider: 'github',
+          branch: 'feat/x',
+          status: 'created',
+          actions: [],
+        },
+      ],
+    };
+    expect(formatResult(result, 'json')).toBe(formatResultJson(result));
   });
 });
