@@ -21,12 +21,12 @@ import {
  *
  * @returns 解析后的参数
  */
-function parseArgs(): {
+function parseArgs(argv?: string[]): {
   projectName?: string;
   template?: string;
   help: boolean;
 } {
-  const args = process.argv.slice(2);
+  const args = argv ?? process.argv.slice(2);
   let projectName: string | undefined;
   let template: string | undefined;
   let help = false;
@@ -232,6 +232,8 @@ async function main(): Promise<void> {
     delegateToOfficialCli(projectName, template);
   }
 }
+
+export { parseArgs, isValidProjectName };
 
 main().catch((err: Error) => {
   console.log(red(`✖ ${err.message}`));
