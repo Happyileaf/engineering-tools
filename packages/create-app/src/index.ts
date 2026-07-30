@@ -5,6 +5,7 @@ import { green, cyan, red, bold } from 'kolorist';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { templates, type Template } from './templates.js';
 import {
   detectPackageManager,
@@ -21,7 +22,7 @@ import {
  *
  * @returns 解析后的参数
  */
-function parseArgs(): {
+export function parseArgs(): {
   projectName?: string;
   template?: string;
   help: boolean;
@@ -72,7 +73,7 @@ function printHelp(): void {
  * @param name - 项目名
  * @returns 是否合法
  */
-function isValidProjectName(name: string): boolean {
+export function isValidProjectName(name: string): boolean {
   // npm 包名规则：小写字母、数字、连字符、下划线
   return /^[a-z0-9_-]+$/i.test(name) && name.length > 0;
 }
@@ -233,7 +234,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: Error) => {
-  console.log(red(`✖ ${err.message}`));
-  process.exit(1);
-});
+/** 仅在直接执行时运行 main，允许测试导入不触发副作用 */
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] && resolve(__filename) === resolve(process.argv[1])) {
+  main().catch((err: Error) => {
+    console.log(red(`✖ ${err.message}`));
+    process.exit(1);
+  });
+}
