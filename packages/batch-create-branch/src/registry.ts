@@ -51,7 +51,7 @@ export function loadRegistry(configPath: string): RegistryConfig {
  * @param p - 原始路径
  * @returns 绝对路径
  */
-function expandTilde(p: string): string {
+export function expandTilde(p: string): string {
   let resolved = p;
   if (resolved.startsWith('~/')) {
     resolved = path.join(os.homedir(), resolved.slice(2));
@@ -67,7 +67,7 @@ function expandTilde(p: string): string {
  * @param p - 原始路径（可能含 ~ 与 glob）
  * @returns 匹配的绝对路径（去重、排序）
  */
-async function expandPath(p: string): Promise<string[]> {
+export async function expandPath(p: string): Promise<string[]> {
   const expanded = expandTilde(p);
   if (/[{*?]/.test(expanded)) {
     const matches: string[] = [];
@@ -85,7 +85,7 @@ async function expandPath(p: string): Promise<string[]> {
  * @param entries - registry 条目
  * @returns 目标列表
  */
-async function toTargets(entries: RepoEntry[]): Promise<RepoTarget[]> {
+export async function toTargets(entries: RepoEntry[]): Promise<RepoTarget[]> {
   const targets: RepoTarget[] = [];
   for (const entry of entries) {
     const paths = await expandPath(entry.path);
