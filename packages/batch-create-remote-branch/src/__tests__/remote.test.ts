@@ -3,12 +3,20 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  formatResult,
+  formatResultJson,
+  formatResultText,
   loadRemoteRegistry,
   renderRemoteBranchName,
   runBatchCreateRemoteBranch,
   selectRemoteRepos,
 } from '../index';
-import type { GithubRemoteRepoTarget, GitlabRemoteRepoTarget } from '../types';
+import type {
+  GithubRemoteRepoTarget,
+  GitlabRemoteRepoTarget,
+  RemoteBatchResult,
+  RemoteRepoTarget,
+} from '../types';
 
 /** mock HTTP 请求记录 */
 interface MockRequest {
@@ -332,5 +340,291 @@ describe('runBatchCreateRemoteBranch', () => {
     expect(result.results[0].status).toBe('failed');
     expect(result.results[0].reason).toContain('相同');
     expect(calls).toHaveLength(0);
+  });
+
+  it('已存在且与源分支一致：标记 exists-consistent 且不做写操作', async () => {
+    const calls = mockFetch((request) => {
+      if (
+        request.method === 'GET' &&
+        request.url.endsWith('/git/ref/heads/main')
+      ) {
+        return { status: 200, body: { object: { sha: 'same-sha' } } };
+      }
+      if (
+        request.method === 'GET' &&
+        request.url.endsWith('/git/ref/heads/feat/upgrade')
+      ) {
+        return { status: 200, body: { object: { sha: 'same-sha' } } };
+      }
+      throw new Error(`unexpected request: ${request.method} ${request.url}`);
+    });
+
+    const result = await runBatchCreateRemoteBranch({
+      repos: [githubTarget()],
+      branch: 'feat/upgrade',
+      base: 'main',
+    });
+
+    expect(result.results[0].status).toBe('exists-consistent');
+    expect(result.results[0].actions).toHaveLength(0);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('--skip-existing 跳过已存在分支', async () => {
+    const calls = mockFetch((request) => {
+      if (
+        request.method === 'GET' &&
+        request.url.endsWith('/git/ref/heads/main')
+      ) {
+        return { status: 200, body: { object: { sha: 'base-sha' } } };
+      }
+      if (
+        request.method === 'GET' &&
+        request.url.endsWith('/git/ref/heads/feat/upgrade')
+      ) {
+        return { status: 200, body: { object: { sha: 'other-sha' } } };
+      }
+      throw new Error(`unexpected request: ${request.method} ${request.url}`);
+    });
+
+    const result = await runBatchCreateRemoteBranch({
+      repos: [githubTarget()],
+      branch: 'feat/upgrade',
+      base: 'main',
+      skipExisting: true,
+    });
+
+    expect(result.results[0].status).toBe('skipped');
+    expect(result.results[0].reason).toContain('skip-existing');
+    expect(calls).toHaveLength(2);
+  });
+
+  it('未指定 base 时直接失败', async () => {
+    const target: GithubRemoteRepoTarget = {
+      ...githubTarget(),
+    };
+    const result = await runBatchCreateRemoteBranch({
+      repos: [target],
+      branch: 'feat/upgrade',
+    });
+
+    expect(result.results[0].status).toBe('failed');
+    expect(result.results[0].reason).toContain('未指定源分支');
+  });
+
+  it('源分支在远端不存在时失败', async () => {
+    const calls = mockFetch((request) => {
+      if (
+        request.method === 'GET' &&
+        request.url.endsWith('/git/ref/heads/main')
+      ) {
+        return { status: 404, body: { message: 'Not Found' } };
+      }
+      throw new Error(`unexpected request: ${request.method} ${request.url}`);
+    });
+
+    const result = await runBatchCreateRemoteBranch({
+      repos: [githubTarget()],
+      branch: 'feat/upgrade',
+      base: 'main',
+    });
+
+    expect(result.results[0].status).toBe('failed');
+    expect(result.results[0].reason).toContain('源分支');
+    expect(calls).toHaveLength(1);
+  });
+
+  it('并发数为 1 时串行执行', async () => {
+    const calls = mockFetch((request) => {
+      if (request.method === 'GET') {
+        if (request.url.endsWith('/git/ref/heads/main')) {
+          return { status: 200, body: { object: { sha: 'base-sha' } } };
+        }
+        return { status: 404, body: { message: 'Not Found' } };
+      }
+      if (request.method === 'POST') {
+        return { status: 201, body: { object: { sha: 'base-sha' } } };
+      }
+      throw new Error(`unexpected request: ${request.method} ${request.url}`);
+    });
+
+    const result = await runBatchCreateRemoteBranch({
+      repos: [githubTarget(), githubTarget()],
+      branch: 'feat/upgrade',
+      base: 'main',
+      concurrency: 1,
+    });
+
+    expect(result.results).toHaveLength(2);
+    for (const r of result.results) expect(r.status).toBe('created');
+    expect(calls.length).toBe(6); // 2 repos * (2 GET + 1 POST)
+  });
+
+  it('并发执行保持结果顺序与输入一致', async () => {
+    const calls = mockFetch((request) => {
+      if (request.method === 'GET') {
+        if (request.url.endsWith('/git/ref/heads/main')) {
+          return { status: 200, body: { object: { sha: 'base-sha' } } };
+        }
+        return { status: 404, body: { message: 'Not Found' } };
+      }
+      if (request.method === 'POST') {
+        return { status: 201, body: { object: { sha: 'base-sha' } } };
+      }
+      throw new Error(`unexpected request: ${request.method} ${request.url}`);
+    });
+
+    const result = await runBatchCreateRemoteBranch({
+      repos: [githubTarget(), githubTarget()],
+      branch: 'feat/upgrade',
+      base: 'main',
+      concurrency: 2,
+    });
+
+    expect(result.results.map((r) => r.repo)).toEqual(['web', 'web']);
+    expect(result.results.map((r) => r.status)).toEqual(['created', 'created']);
+    expect(calls.length).toBe(6);
+  });
+
+  it('--fail-fast：首个失败后立即停止', async () => {
+    const calls = mockFetch((request) => {
+      if (
+        request.method === 'GET' &&
+        request.url.endsWith('/git/ref/heads/main')
+      ) {
+        return { status: 404, body: { message: 'Not Found' } };
+      }
+      throw new Error(`unexpected request: ${request.method} ${request.url}`);
+    });
+
+    const result = await runBatchCreateRemoteBranch({
+      repos: [githubTarget(), githubTarget()],
+      branch: 'feat/upgrade',
+      base: 'main',
+      failFast: true,
+    });
+
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0].status).toBe('failed');
+    expect(calls).toHaveLength(1);
+  });
+
+  it('HTTP 异常被捕获为 failed 状态', async () => {
+    mockFetch(() => {
+      throw new Error('network error');
+    });
+
+    const result = await runBatchCreateRemoteBranch({
+      repos: [githubTarget()],
+      branch: 'feat/upgrade',
+      base: 'main',
+    });
+
+    expect(result.results[0].status).toBe('failed');
+    expect(result.results[0].reason).toContain('network error');
+  });
+});
+
+describe('formatResultText', () => {
+  const makeResult = (
+    overrides: Partial<RemoteRepoTarget> = {},
+  ): RemoteBatchResult => ({
+    dryRun: false,
+    results: [
+      {
+        repo: 'web',
+        provider: 'github',
+        branch: 'feat/upgrade',
+        base: 'main',
+        status: 'created',
+        actions: ['create remote branch feat/upgrade from abc'],
+        ...overrides,
+      } as any,
+    ],
+  });
+
+  it('正常输出包含状态、原因与动作', () => {
+    const text = formatResultText(
+      makeResult({ status: 'skipped', reason: '分支已存在' } as any),
+    );
+    expect(text).toContain('⚠');
+    expect(text).toContain('web (github)');
+    expect(text).toContain('分支已存在');
+    expect(text).toContain('汇总');
+  });
+
+  it('dry-run 模式输出预演提示', () => {
+    const r = makeResult();
+    r.dryRun = true;
+    const text = formatResultText(r);
+    expect(text).toContain('dry-run');
+  });
+
+  it('汇总统计正确', () => {
+    const r: RemoteBatchResult = {
+      dryRun: false,
+      results: [
+        {
+          repo: 'a',
+          provider: 'github',
+          branch: 'x',
+          base: 'main',
+          status: 'created',
+          actions: [],
+        },
+        {
+          repo: 'b',
+          provider: 'gitlab',
+          branch: 'y',
+          base: 'main',
+          status: 'skipped',
+          reason: 'skip',
+          actions: [],
+        },
+        {
+          repo: 'c',
+          provider: 'github',
+          branch: 'z',
+          base: 'main',
+          status: 'failed',
+          reason: 'fail',
+          actions: [],
+        },
+      ],
+    };
+    const text = formatResultText(r);
+    expect(text).toMatch(/成功 1 \/ 跳过 1 \/ 失败 1 \/ 共 3/);
+  });
+});
+
+describe('formatResultJson', () => {
+  it('输出结构化 JSON', () => {
+    const r: RemoteBatchResult = {
+      dryRun: true,
+      results: [
+        {
+          repo: 'web',
+          provider: 'github',
+          branch: 'feat/x',
+          base: 'main',
+          status: 'created',
+          actions: ['create remote branch feat/x from abc'],
+        },
+      ],
+    };
+    const text = formatResultJson(r);
+    expect(JSON.parse(text)).toEqual(r);
+    expect(text).toContain('"dryRun"');
+  });
+});
+
+describe('formatResult', () => {
+  it('按 format 选择 text 或 json 输出', () => {
+    const r: RemoteBatchResult = {
+      dryRun: false,
+      results: [],
+    };
+    expect(formatResult(r, 'text')).toContain('汇总');
+    expect(formatResult(r, 'json')).toBe(JSON.stringify(r, null, 2));
   });
 });
