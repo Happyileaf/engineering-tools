@@ -89,7 +89,7 @@ export function generateReport(data: ReportData, format: ReportFormat): string {
 /**
  * 生成 Markdown 报告
  */
-function generateMarkdown(data: ReportData): string {
+export function generateMarkdown(data: ReportData): string {
   const lines: string[] = [];
 
   // 标题

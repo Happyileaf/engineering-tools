@@ -42,7 +42,7 @@ export function toScope(projectName: string): string {
  * @param vars - 模板变量
  * @returns 替换后的内容
  */
-function replaceVars(content: string, vars: TemplateVars): string {
+export function replaceVars(content: string, vars: TemplateVars): string {
   return content
     .replace(/\{\{projectName\}\}/g, vars.projectName)
     .replace(/\{\{scope\}\}/g, vars.scope)
@@ -55,7 +55,7 @@ function replaceVars(content: string, vars: TemplateVars): string {
  * @param templateDir - 模板目录绝对路径
  * @returns 文件相对路径列表
  */
-function readTemplateFiles(templateDir: string): string[] {
+export function readTemplateFiles(templateDir: string): string[] {
   const results: string[] = [];
 
   function walk(dir: string) {

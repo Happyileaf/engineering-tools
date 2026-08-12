@@ -44,7 +44,7 @@ export class RemoteApiError extends Error {
  * @returns 错误摘要
  * @example readErrorMessage(response)
  */
-async function readErrorMessage(response: Response): Promise<string> {
+export async function readErrorMessage(response: Response): Promise<string> {
   const text = await response.text();
   if (!text) return response.statusText || '请求失败';
   try {

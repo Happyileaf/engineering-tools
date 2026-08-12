@@ -51,7 +51,7 @@ export function loadRegistry(configPath: string): RegistryConfig {
  * @param p - 原始路径
  * @returns 绝对路径
  */
-function expandTilde(p: string): string {
+export function expandTilde(p: string): string {
   let resolved = p;
   if (resolved.startsWith('~/')) {
     resolved = path.join(os.homedir(), resolved.slice(2));
