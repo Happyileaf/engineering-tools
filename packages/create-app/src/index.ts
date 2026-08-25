@@ -19,14 +19,16 @@ import {
 /**
  * CLI 参数解析
  *
+ * @param argv - 原始参数数组（默认 process.argv.slice(2)）
  * @returns 解析后的参数
+ * @internal 仅供测试
  */
-function parseArgs(): {
+export function parseArgs(argv: string[] = process.argv.slice(2)): {
   projectName?: string;
   template?: string;
   help: boolean;
 } {
-  const args = process.argv.slice(2);
+  const args = argv;
   let projectName: string | undefined;
   let template: string | undefined;
   let help = false;
@@ -71,8 +73,9 @@ function printHelp(): void {
  *
  * @param name - 项目名
  * @returns 是否合法
+ * @internal 仅供测试
  */
-function isValidProjectName(name: string): boolean {
+export function isValidProjectName(name: string): boolean {
   // npm 包名规则：小写字母、数字、连字符、下划线
   return /^[a-z0-9_-]+$/i.test(name) && name.length > 0;
 }
